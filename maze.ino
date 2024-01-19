@@ -1,3 +1,7 @@
+#include <NewPing.h> //ping lib
+
+#define maxdist 100
+
 int in1 = 5;
 int in2 = 7;
 int ena = 6;
@@ -21,13 +25,18 @@ int distancer;
 
 long duration; 
 
+float lastpingf, lastpingr, lastpingl, lsense, rsense, fsense;
 
-NewPing sonarLeft(trigl, echol, 20); // NewPing setup of pins and maximum distance.
-NewPing sonarRight(trigr, echor, 20);
-NewPing sonarFront(trigf, echof, 20);
+int wallthreshold = 10;
+int frontthreshold = 7;
 
-unsigned int pingSpeed = 30; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
+NewPing sonarLeft(trigl, echol, maxdist); // NewPing setup of pins and maximum distance.
+NewPing sonarRight(trigr, echor, maxdist);
+NewPing sonarFront(trigf, echof, maxdist);
+
+unsigned int pingSpeed = 30;
 unsigned long pingTimer; 
+
 void setup() {
   pinMode(ena, OUTPUT);
   pinMode(in1, OUTPUT);
@@ -49,52 +58,22 @@ void loop() {
  distancecheckr();
 }
 
-void distancecheckf(){
-   // Clears the trigPin
-  digitalWrite(trigf, LOW);
-  delayMicroseconds(2);
-  // Sets the trigPin on HIGH state for 10 micro seconds
-  digitalWrite(trigf, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigf, LOW);
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(echof, HIGH);
-  // Calculating the distance
-  distancef = duration * 0.034 / 2;
-  Serial.print("Front Distance: ");
-  Serial.println(distancef);
+void checksurround (){
+  distancel = sonarLeft.pingcm();
+  distancer = sonarLeft.pingcm();
+  distancef = sonarLeft.pingcm();
+
+  lsense = (distancel + lastpingl) / 2;
+  rsense = (distancer + lastpingr) / 2;
+  fsense = (distancef + lastpingf) / 2;
+
+  lastpingl = lsense;
+  lastpingr = rsense;
+  lastpingf = fsense;
 }
 
-void distancecheckl(){
-   // Clears the trigPin
-  digitalWrite(trigl, LOW);
-  delayMicroseconds(2);
-  // Sets the trigPin on HIGH state for 10 micro seconds
-  digitalWrite(trigl, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigl, LOW);
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(echol, HIGH);
-  // Calculating the distance
-  distancel = (duration / 29) / 2;
-  Serial.print("Left Distance: ");
-  Serial.println(distancel);
-}
-
-void distancecheckr(){
-   // Clears the trigPin
-  digitalWrite(trigr, LOW);
-  delayMicroseconds(2);
-  // Sets the trigPin on HIGH state for 10 micro seconds
-  digitalWrite(trigr, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigr, LOW);
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(echor, HIGH);
-  // Calculating the distance
-  distancer = (duration / 29) / 2;
-  Serial.print("Right Distance: ");
-  Serial.println(distancer);
+void wallcheck(){
+  if (lsense )
 }
 
 void fw(){
