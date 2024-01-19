@@ -1,3 +1,29 @@
+#include <NewPing.h> //ping lib
+
+#define maxdist 100
+
+int dir;
+
+#define STOP 0
+#define FORWARD 1
+#define BACKWARD 2
+#define LEFT 3
+#define RIGHT 4
+
+float P = 0.7 ;
+float D = 0.5 ;
+float I = 0.4 ;
+float oldErrorP ;
+float totalError ;
+int offset = 5 ;
+
+bool frontw;
+bool leftw;
+bool rightw;
+bool fturn;
+bool rwf;
+bool lwf;
+
 int in1 = 5;
 int in2 = 7;
 int ena = 6;
@@ -19,15 +45,24 @@ int distancef;
 int distancel;
 int distancer;
 
+int baseSpeed = 70 ;
+int RMS ;
+int LMS ;
+
 long duration; 
 
+float lastpingf, lastpingr, lastpingl, lsense, rsense, fsense;
 
-NewPing sonarLeft(trigl, echol, 20); // NewPing setup of pins and maximum distance.
-NewPing sonarRight(trigr, echor, 20);
-NewPing sonarFront(trigf, echof, 20);
+int wallthreshold = 10;
+int frontthreshold = 7;
 
-unsigned int pingSpeed = 30; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
+NewPing sonarLeft(trigl, echol, maxdist); // NewPing setup of pins and maximum distance.
+NewPing sonarRight(trigr, echor, maxdist);
+NewPing sonarFront(trigf, echof, maxdist);
+
+unsigned int pingSpeed = 30;
 unsigned long pingTimer; 
+
 void setup() {
   pinMode(ena, OUTPUT);
   pinMode(in1, OUTPUT);
@@ -45,90 +80,261 @@ void setup() {
 }
 
 void loop() {
- distancecheckl();
- distancecheckr();
+  checksurround();
+  wallcheck();
+
+  if ( fturn == false ) {
+
+    pid_start();
+
+  }
+  else if (lwf == true ) {
+
+    PID(true) ;
+
+  }
+  else if (rwf == true ) {
+    PID(false) ;
+  }
+
+
+  if (leftw == true && rightw == false && frontw == true ) {
+
+    // turnright();
+    PID(false) ;
+
+    if ( fturn == false ) {
+      fturn = true ;
+      rwf = true ;
+    }
+  }
+   if (leftw == false && rightw == true && frontw == true ) {
+
+    PID(true) ;
+
+    if ( fturn == false ) {
+
+      fturn = true ;
+      lwf = true ;
+       
+    }
+  }
+   if ( lsense == 0 || lsense > 100 && rsense == 0 || rsense > 100 && fsense == 0 || fsense > 100 ) {
+
+    setDirection(STOP);
+  }
 }
 
-void distancecheckf(){
-   // Clears the trigPin
-  digitalWrite(trigf, LOW);
-  delayMicroseconds(2);
-  // Sets the trigPin on HIGH state for 10 micro seconds
-  digitalWrite(trigf, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigf, LOW);
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(echof, HIGH);
-  // Calculating the distance
-  distancef = duration * 0.034 / 2;
-  Serial.print("Front Distance: ");
-  Serial.println(distancef);
+void checksurround (){
+  distancel = sonarLeft.ping_cm();
+  distancer = sonarRight.ping_cm();
+  distancef = sonarFront.ping_cm();
+
+  lsense = (distancel + lastpingl) / 2;
+  rsense = (distancer + lastpingr) / 2;
+  fsense = (distancef + lastpingf) / 2;
+
+  lastpingl = lsense;
+  lastpingr = rsense;
+  lastpingf = fsense;
 }
 
-void distancecheckl(){
-   // Clears the trigPin
-  digitalWrite(trigl, LOW);
-  delayMicroseconds(2);
-  // Sets the trigPin on HIGH state for 10 micro seconds
-  digitalWrite(trigl, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigl, LOW);
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(echol, HIGH);
-  // Calculating the distance
-  distancel = (duration / 29) / 2;
-  Serial.print("Left Distance: ");
-  Serial.println(distancel);
+void wallcheck(){
+  if (lsense < wallthreshold) {
+    leftw = true;
+  } else {
+    leftw = false;
+  }
+  
+  if (rsense < wallthreshold) {
+    rightw = true;
+  } else {
+    rightw = false;
+  }
+
+  if (fsense < wallthreshold) {
+    frontw = true;
+  } else {
+    frontw = false;
+  }
 }
 
-void distancecheckr(){
-   // Clears the trigPin
-  digitalWrite(trigr, LOW);
-  delayMicroseconds(2);
-  // Sets the trigPin on HIGH state for 10 micro seconds
-  digitalWrite(trigr, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigr, LOW);
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(echor, HIGH);
-  // Calculating the distance
-  distancer = (duration / 29) / 2;
-  Serial.print("Right Distance: ");
-  Serial.println(distancer);
+
+void setDirection(int dir) {
+
+  if ( dir == FORWARD ) {
+    digitalWrite(in1, HIGH);
+    digitalWrite(in2, LOW);
+    digitalWrite(in3, HIGH);
+    digitalWrite(in4, LOW);
+  }
+  else if ( dir == LEFT ) {
+    digitalWrite(in1, HIGH);
+    digitalWrite(in2, LOW);
+    digitalWrite(in3, LOW);
+    digitalWrite(in4, HIGH);
+  }
+  else if ( dir == RIGHT ) {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, HIGH);
+    digitalWrite(in3, HIGH);
+    digitalWrite(in4, LOW);
+  }
+  else if ( dir == STOP ) {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, LOW);
+    digitalWrite(in3, LOW);
+    digitalWrite(in4, LOW);
+  }
+  else if ( dir == BACKWARD ) {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, HIGH);
+    digitalWrite(in3, LOW);
+    digitalWrite(in4, HIGH);
+  }
 }
 
-void fw(){
-  digitalWrite(ena, 100);  
-  digitalWrite(enb, 100);
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
+//--------------------------------- control ---------------------------------//
+
+void pid_start() {
+
+  float errorP = lsense - rsense; // proportional
+  float errorD = errorP - oldErrorP; //integral
+  float errorI = (2.0 / 3.0) * errorI + errorP ; //derivative
+
+  totalError = P * errorP + D * errorD + I * errorI ;
+  
+  oldErrorP = errorP ;
+
+  RMS = baseSpeed + totalError ;
+  LMS = baseSpeed - totalError ;
+
+  if (RMS < 0) {
+
+    RMS = map(RMS , 0 , -255, 0, 255);
+
+    analogWrite(ena , RMS);
+    analogWrite(enb , LMS);
+
+    setDirection(RIGHT);
+
+  }
+  else if (LMS < 0) {
+    LMS = map(LMS , 0 , -255, 0, 255);
+
+
+    analogWrite(ena , RMS);
+    analogWrite(enb , LMS);
+
+    setDirection(LEFT);
+  }
+  else {
+
+    analogWrite(ena , RMS);
+    analogWrite(enb , LMS);
+
+    setDirection(FORWARD);
+  }
+
 }
 
-void bw(){
-  digitalWrite(ena, 100);  
-  digitalWrite(enb, 100);
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, HIGH);
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, HIGH);
-}
 
-void right(){
-  digitalWrite(ena, 100);  
-  digitalWrite(enb, 0);
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
-}
+//----------------------------- wall follow  control -------------------------------//
 
-void left(){
-  digitalWrite(ena, 0);  
-  digitalWrite(enb, 100);
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
+void PID( boolean left ) {
+
+  if (left == true ) {
+
+    float errorP = lsense - rsense - offset ;
+    float errorD = errorP - oldErrorP;
+    float errorI = (2.0 / 3) * errorI + errorP ;
+
+
+    totalError = P * errorP + D * errorD + I * errorI ;
+
+    oldErrorP = errorP ;
+
+
+    RMS = baseSpeed + totalError ;
+    LMS = baseSpeed - totalError ;
+
+    //  if(RMS < -255) RMS = -255; if(RMS > 255)RMS = 255 ;
+    //  if(LMS < -255) LMS = -255;  if(LMS > 255)LMS = 255 ;
+
+
+    if (RMS < 0) {
+
+      RMS = map(RMS , 0 , -255, 0, 255);
+
+      analogWrite(ena , RMS);
+      analogWrite(enb , LMS);
+
+      setDirection(RIGHT);
+
+    }
+    else if (LMS < 0) {
+      LMS = map(LMS , 0 , -255, 0, 255);
+
+
+      analogWrite(ena , RMS);
+      analogWrite(enb , LMS);
+
+      setDirection(LEFT);
+    }
+    else {
+
+      analogWrite(ena , RMS);
+      analogWrite(enb , LMS);
+
+      setDirection(FORWARD);
+    }
+
+  }
+  else {
+
+    float errorP = lsense - rsense + offset ;
+    float errorD = errorP - oldErrorP;
+    float errorI = (2.0 / 3) * errorI + errorP ;
+
+    totalError = P * errorP + D * errorD + I * errorI ;
+
+    oldErrorP = errorP ;
+
+
+    RMS = baseSpeed + totalError ;
+    LMS = baseSpeed - totalError ;
+
+    //  if(RMS < -255) RMS = -255; if(RMS > 255)RMS = 255 ;
+    //  if(LMS < -255) LMS = -255;  if(LMS > 255)LMS = 255 ;
+
+
+    if (RMS < 0) {
+
+      RMS = map(RMS , 0 , -255, 0, 255);
+
+      analogWrite(ena , RMS);
+      analogWrite(enb , LMS);
+
+      setDirection(RIGHT);
+
+    }
+    else if (LMS < 0) {
+      LMS = map(LMS , 0 , -255, 0, 255);
+
+
+      analogWrite(ena , RMS);
+      analogWrite(enb , LMS);
+
+      setDirection(LEFT);
+    }
+    else {
+
+      analogWrite(ena , RMS);
+      analogWrite(enb , LMS);
+
+      setDirection(FORWARD);
+    }
+
+  }
+
 }
