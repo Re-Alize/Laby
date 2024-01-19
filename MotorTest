@@ -1,0 +1,85 @@
+#include <NewPing.h> //ping lib
+
+int in1 = 5;
+int in2 = 7;
+int ena = 6;
+
+int in3 = 8;
+int in4 = 10;
+int enb = 9;
+
+int trigf = 12;
+int echof = 13;
+
+int trigl = 11;
+int echol = 4;
+
+int trigr = 2;
+int echor = 3;
+
+NewPing sonarLeft(trigl, echol, 500); // NewPing setup of pins and maximum distance.
+NewPing sonarRight(trigr, echor, 500);
+NewPing sonarFront(trigf, echof, 500);
+
+
+void setup() {
+  pinMode(ena, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(enb, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
+  pinMode(trigf, OUTPUT);
+  pinMode(echof, INPUT);
+  pinMode(trigl, OUTPUT);
+  pinMode(echol, INPUT);
+  pinMode(trigr, OUTPUT);
+  pinMode(echor, INPUT);
+}
+
+void loop() {
+  fw();
+  delay(500);
+  bw();
+  delay(500);
+  right();
+  delay(500);
+  left();
+  delay(500);
+}
+
+void fw(){
+  analogWrite(ena, 255);
+  analogWrite(enb, 255);
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+}
+
+void bw(){
+  analogWrite(ena, 255);
+  analogWrite(enb, 255);
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+}
+
+void left(){
+  analogWrite(ena, 255);
+  analogWrite(enb, 255);
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+}
+
+void right(){
+  analogWrite(ena, 255);
+  analogWrite(enb, 255);
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+}
